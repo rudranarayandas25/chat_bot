@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 
 # ---- Page config ----
 st.set_page_config(page_title="My Chat App", page_icon="💬", layout="wide")
