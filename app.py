@@ -1,5 +1,6 @@
 import streamlit as st
 from google import genai
+from google.genai import types
 
 # ---- Page config ----
 st.set_page_config(page_title="My Chat App", page_icon="💬", layout="wide")
@@ -8,7 +9,11 @@ st.title("💬 Simple Chatbot")
 # ---- Sidebar for settings ----
 with st.sidebar:
     st.header("Settings")
-    api_key = st.text_input("Enter your Gemini API Key", type="password", value=st.session_state.get("api_key", ""))
+    api_key = st.text_input(
+        "Enter your Gemini API Key",
+        type="password",
+        value=st.session_state.get("api_key", ""),
+    )
     st.caption("Get a free key at aistudio.google.com/apikey — no credit card needed.")
 
     st.divider()
@@ -71,26 +76,27 @@ if user_input:
         if m["role"] == "assistant" and m["content"] == "Hi! Ask me anything.":
             continue
         role = "model" if m["role"] == "assistant" else "user"
-        history.append({"role": role, "parts": [m["content"]]})
+        history.append({"role": role, "parts": [{"text": m["content"]}]})
 
     # ---- Call the Gemini API and stream the response ----
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name=model_name,
-            system_instruction=system_prompt,
-            generation_config={
-                "temperature": temperature,
-                "max_output_tokens": max_tokens,
-            },
+        client = genai.Client(api_key=api_key)
+
+        chat = client.chats.create(
+            model=model_name,
+            config=types.GenerateContentConfig(
+                system_instruction=system_prompt,
+                temperature=temperature,
+                max_output_tokens=max_tokens,
+            ),
+            history=history,
         )
-        chat = model.start_chat(history=history)
 
         with st.chat_message("assistant"):
             placeholder = st.empty()
             full_response = ""
 
-            response_stream = chat.send_message(user_input, stream=True)
+            response_stream = chat.send_message_stream(user_input)
             for chunk in response_stream:
                 if chunk.text:
                     full_response += chunk.text
